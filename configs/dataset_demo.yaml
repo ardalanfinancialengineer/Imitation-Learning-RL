@@ -1,0 +1,56 @@
+# Weeks 14-16 dataset and environment demonstration.
+# Uses the same canonical preset and expert settings as the Weeks 9-13 demo so
+# the state vectors are built from the expert already validated there.
+
+simulation:
+  preset: canonical_three_regime
+  n_assets: 8
+  T: 1200
+  base_seed: 42
+  n_paths: 10          # Development size; the final study uses 500.
+
+expert:
+  horizon: 21
+  risk_aversion: 5.0
+  transaction_cost: 0.0025
+  constraints:
+    long_only: true
+    min_weight: 0.0
+    max_weight: 0.30
+    leverage_limit: 1.0
+  moments:
+    estimator: regime_mixture
+    covariance: ledoit_wolf
+    window: 60
+    blend_weight: 0.25
+    n_regimes: 3
+    burn_in: 300
+    refit_every: 250
+
+# Equation (6): s_t = [r_{t-L+1:t}, mu_hat, vech(Sigma_hat), p_hat_t, w_{t-1}, c, gamma]
+state:
+  lookback: 20              # L
+  covariance_encoding: vech # vech | compact
+  include_regime_probabilities: true
+  include_previous_weights: true
+  include_economic_parameters: true
+
+# Section 5.1 data separation protocol.
+splits:
+  train_fraction: 0.7
+  validation_fraction: 0.15
+  temporal:
+    train_fraction: 0.7
+    validation_fraction: 0.15
+
+environment:
+  expert_deviation_penalty: 0.0   # lambda_E; enabled at the PPO stage
+
+diagnostics:
+  max_state_difference: 0.0        # States must be bit-identical, not merely close
+  max_simplex_violation: 1.0e-6
+  max_environment_difference: 1.0e-12
+  max_roundtrip_difference: 0.0
+
+paths:
+  output_dir: data/dataset_demo/

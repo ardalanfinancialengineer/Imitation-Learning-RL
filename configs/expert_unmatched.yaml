@@ -1,0 +1,57 @@
+# Decision-#1 preset experiment (open_decisions.md §1, option B evidence).
+# Identical to expert_demo.yaml EXCEPT simulation.preset and size. The unmatched
+# preset reverses the volatility ordering relative to the means within each
+# regime, so mu_i/sigma_i^2 varies across assets and the mean-variance frontier
+# is non-degenerate. Question: does the rolling-horizon Markowitz expert then
+# beat equal weight, where on the canonical preset it does not?
+#
+# Run alongside a canonical run at the SAME size for a fair comparison:
+#   uv run python scripts/run_expert_demo.py --config configs/expert_unmatched.yaml \
+#     --output-dir data/expert_unmatched
+#   uv run python scripts/run_expert_demo.py --config configs/expert_demo.yaml \
+#     --n-assets 50 --periods 5000 --output-dir data/expert_canonical_midscale
+
+simulation:
+  preset: unmatched_three_regime
+  n_assets: 50
+  T: 5000
+  seed: 42
+
+expert:
+  horizon: 21
+  risk_aversion: 5.0
+  transaction_cost: 0.0025
+  constraints:
+    long_only: true
+    min_weight: 0.0
+    max_weight: 0.30
+    leverage_limit: 1.0
+  moments:
+    estimator: regime_mixture
+    covariance: ledoit_wolf
+    window: 60
+    blend_weight: 0.25
+    n_regimes: 3
+    burn_in: 500
+    refit_every: 250
+
+ablations:
+  transaction_costs: [0.0, 0.001, 0.0025, 0.005]
+  horizons: [1, 5, 21]
+  risk_aversions: [2.0, 5.0, 20.0]
+  covariance_estimators: [sample, ledoit_wolf]
+
+diagnostics:
+  max_constraint_violation: 1.0e-6
+  max_fallback_rate: 0.0
+  max_replication_error: 1.0e-9
+  max_determinism_error: 1.0e-9
+  min_turnover_reduction: 1.0e-4
+  # N=50 solves are slower than N=8; relax the median-solve gate so a slow but
+  # correct solve does not fail the demo. (This gate is a speed guard, not a
+  # correctness one; correctness is covered by the other thresholds.)
+  max_median_solve_seconds: 2.0
+  min_regime_filter_accuracy: 0.45
+
+paths:
+  output_dir: data/expert_unmatched/

@@ -1,0 +1,124 @@
+# Weeks 22-25 DAgger demonstration.
+# Simulation, state, and split settings are copied unchanged from
+# configs/bc_demo.yaml so DAgger extends exactly the Stage 1 setup rather than
+# a re-tuned one. Only the `experts`, `dagger`, and `diagnostics` sections are
+# new, plus the reduced path count the rollout and query cost forces.
+
+simulation:
+  preset: canonical_three_regime
+  n_assets: 8
+  T: 900
+  base_seed: 42
+  n_paths: 12          # Development size; the final study uses 500.
+
+# Two expert configurations, differing only in the moment estimator.
+#
+# `shipped` is the Weeks 9-13 expert used everywhere else. Under it the state of
+# Equation (6) is *not* sufficient: the expert plans over H=21 days using
+# horizon-dependent forecasts and the state carries only the tau=0 one, an
+# information gap Weeks 17-21 measured at 67% of the level for mu_hat.
+#
+# `control` uses rolling-window moments, which are horizon-constant, so the
+# tau=0 forecast in the state is the whole of what the expert used. DAgger
+# cannot close an information gap — it addresses distribution shift, not missing
+# state variables — so running both is what separates "DAgger under-delivers"
+# from "DAgger is pinned against the same floor as behavioural cloning".
+experts:
+  shipped:
+    horizon: 21
+    risk_aversion: 5.0
+    transaction_cost: 0.0025
+    constraints:
+      long_only: true
+      min_weight: 0.0
+      max_weight: 0.30
+      leverage_limit: 1.0
+    moments:
+      estimator: regime_mixture
+      covariance: ledoit_wolf
+      window: 60
+      blend_weight: 0.25
+      n_regimes: 3
+      burn_in: 300
+      refit_every: 250
+  control:
+    horizon: 21
+    risk_aversion: 5.0
+    transaction_cost: 0.0025
+    constraints:
+      long_only: true
+      min_weight: 0.0
+      max_weight: 0.30
+      leverage_limit: 1.0
+    moments:
+      estimator: rolling
+      covariance: ledoit_wolf
+      window: 60
+
+state:
+  lookback: 20
+  covariance_encoding: vech
+  include_regime_probabilities: true
+  include_previous_weights: true
+  include_economic_parameters: true
+
+splits:
+  train_fraction: 0.7
+  validation_fraction: 0.15
+  temporal:
+    train_fraction: 0.7
+    validation_fraction: 0.15
+
+# Section 5.2 strategy 3 plus the architecture floor. The transformer-diffusion
+# policy is supported by the code but not run here: at ~6.4 ms per decision it
+# costs roughly five times as much per rollout step, and Weeks 17-21 measured it
+# as clearly weaker on both accuracy and latency.
+policies:
+  transformer:
+    kind: transformer
+    encoder:
+      d_model: 64
+      n_heads: 4
+      n_layers: 2
+      dropout: 0.1
+  mlp:
+    kind: mlp
+    hidden_dimensions: [256, 128]
+    dropout: 0.1
+
+# Stage 1. DAgger warm-starts from a behaviour-cloned policy; rolling out an
+# untrained network would collect states from a random walk.
+behavioural_cloning:
+  epochs: 25
+  batch_size: 256
+  learning_rate: 1.0e-3
+  weight_decay: 1.0e-4
+  loss: mse
+  patience: 8
+  seed: 0
+
+dagger:
+  # Sized so the whole demo — two policies under two expert configurations —
+  # finishes in roughly 20 minutes. Each round rolls the learner over every
+  # training path and re-solves the expert's quadratic programme at a sample of
+  # the states it visited, which is the dominant cost.
+  iterations: 4
+  beta_schedule: exponential   # Ross et al.'s beta_i = beta_decay^i
+  beta_decay: 0.5
+  query_fraction: 0.3          # Fraction of visited states queried per round
+  epochs_per_round: 10
+  retrain_from_scratch: false  # Warm-start; the learning rate is kept at the
+                               # behavioural-cloning value, which measured
+                               # better than lowering it.
+  seed: 0
+  max_queries_per_round: 20000
+
+diagnostics:
+  max_query_difference: 0.0            # The DAgger query must be the same
+  max_state_patch_difference: 0.0      # programme the demonstrations came from
+  max_feasibility_violation: 1.0e-6
+  max_look_ahead_difference: 0.0
+  max_determinism_difference: 0.0
+
+paths:
+  output_dir: data/dagger_demo/

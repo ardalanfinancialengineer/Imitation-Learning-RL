@@ -1,0 +1,110 @@
+# Weeks 26-29 Wasserstein-regularised GAIL demonstration.
+# Simulation, expert, state, and split settings are copied unchanged from
+# configs/dagger_demo.yaml so the three imitation stages are compared on exactly
+# the same paths and the same cloned starting policy.
+
+simulation:
+  preset: canonical_three_regime
+  n_assets: 8
+  T: 900
+  base_seed: 42
+  n_paths: 12
+
+expert:
+  horizon: 21
+  risk_aversion: 5.0
+  transaction_cost: 0.0025
+  constraints:
+    long_only: true
+    min_weight: 0.0
+    max_weight: 0.30
+    leverage_limit: 1.0
+  moments:
+    estimator: regime_mixture
+    covariance: ledoit_wolf
+    window: 60
+    blend_weight: 0.25
+    n_regimes: 3
+    burn_in: 300
+    refit_every: 250
+
+state:
+  lookback: 20
+  covariance_encoding: vech
+  include_regime_probabilities: true
+  include_previous_weights: true
+  include_economic_parameters: true
+
+splits:
+  train_fraction: 0.7
+  validation_fraction: 0.15
+  temporal:
+    train_fraction: 0.7
+    validation_fraction: 0.15
+
+policy:
+  kind: transformer
+  encoder:
+    d_model: 64
+    n_heads: 4
+    n_layers: 2
+    dropout: 0.1
+
+behavioural_cloning:
+  epochs: 25
+  batch_size: 256
+  learning_rate: 1.0e-3
+  weight_decay: 1.0e-4
+  loss: mse
+  patience: 8
+  seed: 0
+
+# Stage 2, run so GAIL can be compared against it and warm-started from it.
+dagger:
+  iterations: 4
+  beta_schedule: exponential
+  beta_decay: 0.5
+  query_fraction: 0.3
+  epochs_per_round: 10
+  seed: 0
+
+gail:
+  iterations: 40
+  segment_length: 24        # Truncated BPTT window
+  policy_steps: 1
+  policy_learning_rate: 1.0e-4
+  batch_size: 256
+  bc_anchor_weight: 0.0     # Pure occupancy matching; > 0 anchors to the expert
+  gradient_clip: 1.0
+  evaluate_every: 5
+  seed: 0
+
+# The critic budget matters more than any other setting here. With too few or
+# too slow critic steps the gradient penalty dominates its loss, the measured
+# Lipschitz constant sits near 0.2 instead of 1, and the reported Wasserstein
+# estimate goes negative — a critic that has not begun to separate the two
+# distributions. These values put the measured constant at roughly 1.1-1.4.
+critic:
+  hidden_dimensions: [256, 128]
+  lipschitz: gradient_penalty   # gradient_penalty | weight_clipping
+  gradient_penalty_weight: 10.0
+  clip_value: 0.05
+  learning_rate: 3.0e-3
+  steps_per_round: 10
+
+# The stability investigation the work package asks for: the same run repeated
+# with the other Lipschitz enforcement method from the exposé's references.
+stability_ablation:
+  lipschitz: [gradient_penalty, weight_clipping]
+
+diagnostics:
+  max_gradient_relative_error: 1.0e-6   # float64 finite differences
+  max_splice_difference: 1.0e-6
+  max_lipschitz_excess: 1.0
+  max_feasibility_violation: 1.0e-6
+  max_wasserstein_volatility: 1.0
+  max_look_ahead_difference: 0.0
+  max_determinism_difference: 0.0
+
+paths:
+  output_dir: data/gail_demo/

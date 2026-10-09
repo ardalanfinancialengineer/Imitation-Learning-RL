@@ -1,0 +1,112 @@
+# Weeks 30-33 PPO fine-tuning demonstration.
+# Simulation, expert, state, and split settings are copied unchanged from
+# configs/gail_demo.yaml so every stage of the pipeline is compared on the same
+# paths and the same cloned starting policy.
+
+simulation:
+  preset: canonical_three_regime
+  n_assets: 8
+  T: 900
+  base_seed: 42
+  n_paths: 12
+
+expert:
+  horizon: 21
+  risk_aversion: 5.0
+  transaction_cost: 0.0025
+  constraints:
+    long_only: true
+    min_weight: 0.0
+    max_weight: 0.30
+    leverage_limit: 1.0
+  moments:
+    estimator: regime_mixture
+    covariance: ledoit_wolf
+    window: 60
+    blend_weight: 0.25
+    n_regimes: 3
+    burn_in: 300
+    refit_every: 250
+
+state:
+  lookback: 20
+  covariance_encoding: vech
+  include_regime_probabilities: true
+  include_previous_weights: true
+  include_economic_parameters: true
+
+splits:
+  train_fraction: 0.7
+  validation_fraction: 0.15
+  temporal:
+    train_fraction: 0.7
+    validation_fraction: 0.15
+
+policy:
+  kind: transformer
+  encoder:
+    d_model: 64
+    n_heads: 4
+    n_layers: 2
+    dropout: 0.1
+
+behavioural_cloning:
+  epochs: 25
+  batch_size: 256
+  learning_rate: 1.0e-3
+  weight_decay: 1.0e-4
+  loss: mse
+  patience: 8
+  seed: 0
+
+# Equation (11). lambda_E applies to the hybrid arm only; the pure-PPO baseline
+# is run at lambda_E = 0 so that "without imitation initialisation" also means
+# without expert information in its reward.
+reward:
+  expert_deviation_penalty: 0.0
+
+actor_critic:
+  log_std_init: -3.0          # Gaussian on the pre-projection scores
+  value_hidden_dimensions: [128, 64]
+  learn_log_std: true
+
+# A low learning rate measured better than a higher one: 3e-5 reached a better
+# certainty equivalent than 2e-4 despite a far smaller clip fraction. The warm
+# start is worth protecting, which is the reason the expose gives for choosing
+# PPO in the first place.
+ppo:
+  iterations: 40
+  epochs_per_iteration: 4
+  minibatch_size: 256
+  learning_rate: 3.0e-5
+  clip_range: 0.2
+  value_coefficient: 0.5
+  entropy_coefficient: 1.0e-4
+  gae_lambda: 0.95
+  discount: 0.99
+  gradient_clip: 0.5
+  target_kl: 0.02
+  seed: 0
+
+# Reported upper baseline on the training objective, not a competing method.
+analytic:
+  iterations: 60
+  segment_length: 32
+  learning_rate: 2.0e-4
+  evaluate_every: 5
+  seed: 0
+
+# lambda_E ablation for the hybrid arm, so its contribution is measured.
+ablations:
+  expert_deviation_penalty: [0.0, 0.1]
+
+diagnostics:
+  max_reward_difference: 1.0e-9
+  max_feasibility_violation: 1.0e-6
+  max_log_probability_difference: 1.0e-5
+  max_warm_start_difference: 1.0e-6
+  max_approximate_kl: 0.5
+  max_determinism_difference: 0.0
+
+paths:
+  output_dir: data/ppo_demo/

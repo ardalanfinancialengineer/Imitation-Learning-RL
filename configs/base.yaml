@@ -1,0 +1,55 @@
+# Base experiment configuration
+# All scripts load this file; values can be overridden via CLI flags.
+
+simulation:
+  n_assets: 4
+  T: 500                    # Total time steps
+  n_regimes: 3              # Number of hidden market regimes
+  seed: 42
+  transition_matrix:
+    - [0.92, 0.07, 0.01]
+    - [0.08, 0.84, 0.08]
+    - [0.03, 0.17, 0.80]
+  initial_distribution: [0.70, 0.20, 0.10]
+  regime_means:
+    - [0.0002, 0.0004, 0.0005, 0.0006]
+    - [-0.0002, 0.0000, 0.0002, 0.0003]
+    - [-0.0012, -0.0009, -0.0006, -0.0004]
+  covariance:
+    method: constant_correlation
+    volatilities:
+      - [0.008, 0.010, 0.012, 0.014]
+      - [0.016, 0.020, 0.025, 0.030]
+      - [0.025, 0.032, 0.038, 0.045]
+    correlations: [0.20, 0.40, 0.55]
+  # Exposé experiment range c in [0.001, 0.005].
+  transaction_costs: [0.001, 0.0025, 0.005]
+
+expert:
+  window: 60                # Look-back window for parameter estimation (periods)
+  risk_aversion: 1.0        # Gamma: trade-off between return and variance
+  long_only: true
+  max_weight: 0.4           # Maximum per-asset allocation
+
+imitation:
+  hidden_dims: [128, 64]    # Policy network hidden layer widths
+  learning_rate: 1.0e-3
+  epochs: 100
+  batch_size: 64
+  train_split: 0.8          # Fraction of demonstrations used for training
+
+reinforcement:
+  algorithm: PPO
+  total_timesteps: 500_000
+  risk_aversion: 1.0        # Must match environment reward shaping
+  transaction_cost: 0.001
+
+evaluation:
+  annualisation: 252
+  risk_free_rate: 0.0
+
+paths:
+  expert_output_dir: data/expert_demonstrations/
+  results_dir: results/
+  checkpoints_dir: checkpoints/
+  logs_dir: logs/

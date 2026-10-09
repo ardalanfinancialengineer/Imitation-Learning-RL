@@ -1,0 +1,24 @@
+# Weeks 5-8 simulation-environment demonstration.
+# The canonical preset scales to the final N={50,100,200} universes without
+# embedding large covariance matrices in configuration files.
+
+simulation:
+  preset: canonical_three_regime
+  n_assets: 6
+  T: 10000
+  seed: 42
+  transaction_costs: [0.001, 0.0025, 0.005]
+
+diagnostics:
+  max_frequency_error: 0.03
+  max_transition_error: 0.05
+  max_mean_z_score: 5.0
+  max_variance_standardized_error: 5.0
+  max_covariance_error_ratio: 3.0
+
+final_scale:
+  n_assets: [50, 100, 200]
+  T: 10000
+
+paths:
+  output_dir: data/simulation_demo/
