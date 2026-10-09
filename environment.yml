@@ -1,0 +1,38 @@
+name: il-rl-portfolio
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  # Numerical core
+  - numpy>=1.26
+  - pandas>=2.1
+  - scipy>=1.11
+  # Visualisation
+  - matplotlib>=3.8
+  - seaborn>=0.13
+  # Notebooks
+  - jupyter
+  - ipykernel
+  # Testing
+  - pytest>=8.0
+  - pytest-cov>=4.1
+  - pip:
+      # Convex optimisation
+      - cvxpy>=1.4
+      # Deep learning
+      - torch>=2.2
+      # Reinforcement learning
+      - stable-baselines3>=2.2
+      - gymnasium>=0.29
+      # Statistics / ML
+      - scikit-learn>=1.4
+      - statsmodels>=0.14
+      # Configuration
+      - pyyaml>=6.0
+      # Linting / typing (dev)
+      - ruff>=0.4
+      - mypy>=1.9
+      # Editable install of this package
+      - -e .

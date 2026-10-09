@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "il-rl-portfolio-optimization"
+version = "0.1.0"
+description = "Imitation-RL for dynamic multi-period mean-variance portfolio optimization"
+requires-python = ">=3.10"
+readme = "README.md"
+license = { text = "MIT" }
+
+dependencies = [
+    # Numerical core
+    "numpy>=1.26",
+    "pandas>=2.1",
+    "scipy>=1.11",
+    # Convex optimisation (Markowitz expert)
+    "cvxpy>=1.4",
+    # Deep learning
+    "torch>=2.2",
+    # Reinforcement learning
+    "stable-baselines3>=2.2",
+    "gymnasium>=0.29",
+    # Statistics / feature engineering
+    "scikit-learn>=1.4",
+    "statsmodels>=0.14",
+    # Visualisation
+    "matplotlib>=3.8",
+    "seaborn>=0.13",
+    # Configuration
+    "pyyaml>=6.0",
+    # Observability (run memory instrumentation)
+    "psutil>=5.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=4.1",
+    "jupyter>=1.0",
+    "ipykernel>=6.0",
+    "ruff>=0.4",
+    "mypy>=1.9",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --tb=short"
+
+[tool.ruff]
+line-length = 99
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.mypy]
+# No python_version pin: mypy then checks against the interpreter actually in
+# use. A hard-coded "3.10" against the 3.14 environment made numpy's stubs
+# unparseable, which aborted type checking before any project file was read.
+ignore_missing_imports = true
